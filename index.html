@@ -100,16 +100,15 @@ async function genererAnalyseOpenRouter() {
     const ids = ['a', 'o', 'i', 'e', 'c', 'l'];
     ids.forEach(id => document.getElementById(`txt-${id}`).innerHTML = "<span class='loading'>Analyse doctrinale en cours...</span>");
 
-    // Écriture d'un prompt d'une rigidité militaire absolue pour imposer la co-numérotation entre Objectifs et Idées de Manœuvre
-    const systemPrompt = `Tu es un automate de commandement tactique pour les sapeurs-pompiers français, agissant au niveau Chef de Colonne / GOC 4. Tu analyses la situation et génères obligatoirement un texte plat en JSON contenant 6 clés de type chaîne de caractères uniquement (pas de sous-objets). Sois extrêmement direct, technique, précis et emploie les termes professionnels du GDO/GDR.
+    const systemPrompt = `Tu es un automate de commandement tactique pour les sapeurs-pompiers français, agissant au niveau Chef de Colonne / GOC 4. Tu analyses la situation et génères impérativement un objet JSON valide contenant exactement 6 clés : "a", "o", "i", "e", "c", "l". Les valeurs doivent être des chaînes de caractères simples, sans aucun saut de ligne réel (\\n) ni guillemets internes non échappés. Utilise uniquement des espaces ou des tirets pour structurer. Emploie strictement les termes du GDO/GDR.
 
-    Exigences par clés :
-    "a": "Rédige impérativement une chaîne de caractères textuelle structurée exactement ainsi :\n- PERSONNES : (Analyse fine des risques de propagation, intoxications, bilans potentiels à 30min)\n- ANIMAUX : (Risques associés)\n- BIENS : (Risques d'effondrement structural, propagation verticale/horizontale, coupures d'utilités)\n- ENVIRONNEMENT : (Pollutions, fumées, rejets toxiques)",
-    "o": "Identifie les objectifs stratégiques hiérarchisés par ordre de priorité opérationnelle absolue en les numérotant strictement sous la forme d'une liste (ex : 1. Sauvetages prioritaires de l'immeuble, 2. Limiter les propagations au flanc droit...). Ne pas paraphraser la situation, fixer des buts tactiques fermes.",
-    "i": "Rédige l'Idée de manœuvre en liant obligatoirement chaque action à l'objectif de la clé 'o' en utilisant une sous-numérotation croisée stricte. Par exemple, pour répondre à l'objectif '1.', détaille les idées de manœuvre associées via '1-1. [Action]', '1-2. [Action]'. Pour l'objectif '2.', utilise '2-1. [Action]', etc. Définis clairement l'effet majeur recherché, le point d'application de l'effort, et la stratégie globale pour chaque point.",
-    "e": "Ordre d'exécution sectorisé et ultra-précis. Répartis explicitement les missions en nommant précisément les agrès réglementaires français (FPT1, FPT2, EPA, VSAV, VSR, CEMD, etc.). Qui se place où, et fait quoi au juste.",
-    "c": "Commandement : Point de rassemblement des moyens (PRM), emplacement précis du Poste de Commandement (PC), sectorisation physique claire (Secteur Incendie, Secteur Sauvetage, Secteur SAP) et attribution stricte des canaux radio ANTARES (Tactique, Commandement, Liaison).",
-    "l": "Logistique : Besoins hydrauliques quantifiés (calcul du débit, alimentation sur poteaux d'incendie de 100mm), norias de VSAV, engagement du SSSM (Soutien Sanitaire), demande de renforts spécialisés (CMIC, 2R...), et coordination des services tiers (Enedis, GRDF, Police/Gendarmerie).";`;
+    Contenu obligatoire attendu pour chaque clé :
+    "a": "PERSONNES: (Analyse risques propagation/intoxications/bilans à 30min) | ANIMAUX: (Risques) | BIENS: (Effondrement, propagations, utilités) | ENVIRONNEMENT: (Pollutions, rejets)",
+    "o": "Liste ordonnée d'objectifs stratégiques fermes, hiérarchisés numériquement (ex: 1. Sauvetages prioritaires - 2. Limiter les propagations au flanc droit...).",
+    "i": "Idée de manœuvre liée directement aux objectifs de 'o' via une sous-numérotation stricte. Pour l'objectif '1.', écris '1-1. [Action]' et '1-2. [Action]'. Pour l'objectif '2.', écris '2-1. [Action]', etc. Précise l'effet majeur recherché et le point d'effort.",
+    "e": "Ordre d'exécution sectorisé précis avec les agrès réglementaires (FPT1, FPT2, EPA, VSAV, VSR, etc.). Qui fait quoi et où.",
+    "c": "Commandement: Emplacement PRM, emplacement PC, sectorisation physique claire (Incendie, Sauvetage, SAP) et attribution des canaux ANTARES (Tactique, Commandement, Liaison).",
+    "l": "Logistique: Besoins hydrauliques quantifiés (débit, poteaux 100mm), norias VSAV, SSSM, renforts (CMIC, 2R...), services tiers (Enedis, GRDF, FDO).";`;
 
     try {
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -140,12 +139,24 @@ async function genererAnalyseOpenRouter() {
         const json = JSON.parse(rawText);
 
         ids.forEach(id => {
-            // Sécurité : si l'IA renvoie par erreur un objet au lieu d'un texte, on le convertit proprement
+            let content = "";
             if (typeof json[id] === 'object') {
-                document.getElementById(`txt-${id}`).innerText = JSON.stringify(json[id], null, 2);
+                content = JSON.stringify(json[id]);
             } else {
-                document.getElementById(`txt-${id}`).innerText = json[id] || "Donnée indisponible.";
+                content = json[id] || "Donnée indisponible.";
             }
+            
+            // Formatage à la volée pour remplacer les séparateurs par des retours à la ligne propres
+            let formattedContent = content
+                .replace(/ \| /g, "<br>")
+                .replace(/ - /g, "<br>")
+                .replace(/(\d+\.\s|\d+-\d+\.\s)/g, "<br>$1");
+                
+            if (formattedContent.startsWith("<br>")) {
+                formattedContent = formattedContent.substring(4);
+            }
+
+            document.getElementById(`txt-${id}`).innerHTML = formattedContent;
         });
 
     } catch (e) {
