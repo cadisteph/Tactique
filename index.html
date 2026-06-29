@@ -115,16 +115,49 @@ function resetSituation() {
 }
 
 let rec;
+let isRecording = false;
+
 function actionMicro() {
     window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!window.SpeechRecognition) { alert("Micro non supporté sur ce navigateur mobile."); return; }
+    
     if(!rec) {
-        rec = new window.SpeechRecognition(); rec.lang = 'fr-FR';
-        rec.onstart = () => { document.getElementById('micBtn').style.backgroundColor = '#ef4444'; };
-        rec.onend = () => { document.getElementById('micBtn').style.backgroundColor = '#475569'; };
-        rec.onresult = (e) => { document.getElementById('sitIn').value += e.results[0][0].transcript + " "; };
+        rec = new window.SpeechRecognition(); 
+        rec.lang = 'fr-FR';
+        rec.continuous = true; // Mode continu pour ne pas couper pendant les blancs de réflexion
+        rec.interimResults = false; // N'écrit que les phrases complètes et validées
+        
+        rec.onstart = () => { 
+            isRecording = true;
+            document.getElementById('micBtn').style.backgroundColor = '#ef4444'; 
+        };
+        
+        rec.onend = () => { 
+            isRecording = false;
+            document.getElementById('micBtn').style.backgroundColor = '#475569'; 
+        };
+        
+        rec.onresult = (e) => { 
+            let currentText = "";
+            for (let i = e.resultIndex; i < e.results.length; i++) {
+                if (e.results[i].isFinal) {
+                    currentText += e.results[i][0].transcript + " ";
+                }
+            }
+            document.getElementById('sitIn').value += currentText; 
+        };
+        
+        rec.onerror = (err) => {
+            console.error("Erreur micro:", err.error);
+            if(err.error === 'not-allowed') alert("Accès micro refusé. Vérifiez les autorisations de votre navigateur.");
+        };
     }
-    rec.start();
+    
+    if (isRecording) {
+        rec.stop();
+    } else {
+        rec.start();
+    }
 }
 
 async function genererAnalyseOpenRouter() {
@@ -143,7 +176,7 @@ async function genererAnalyseOpenRouter() {
     "a": "PERSONNES: (Analyse risques/intox/bilan 30min) | ANIMAUX: (Risques) | BIENS: (Effondrement, propagations, fluides) | ENVIRONNEMENT: (Pollutions, rejets toxiques, vent/météo)",
     "o": "Hiérarchie numérique des objectifs opérationnels (ex: 1. Extraire et prendre en charge les victimes - 2. Neutraliser le risque incendie/explosion). Fixe des buts tactiques clairs.",
     "i": "Idée de manœuvre liée directement aux objectifs de 'o' via sous-numérotation stricte. Pour l'objectif '1.', mets '1-1. [Effet recherché/Action]' et '1-2.'. Pour l'objectif '2.', '2-1.', etc. Précise le point d'effort principal.",
-    "e": "Ordre d'exécution sectorisé précis. Divise la manœuvre par Secteurs (ex: SECTEUR SAP, SECTEUR INCENDIE). Pour chaque secteur, attribue les AGRES officiels français nécessaires en combinant obligatoirement l'action chiffrée ET sa mission explicite concise (ex: - Secteur SAP : VSAV 1 (Action 1-1 : Protection et bilan victime) + VSAV 2 (Action 1-2 : Évacuation) | - Secteur Incendie : FPTSR (Action 2-1 : Désincarcération et balisage) + FPT (Action 2-2 : Établissement LDV 500)). Reste ultra-précis.",
+    "e": "Ordre d'exécution sectorisé précis. Divise la manœuvre par Secteurs (ex: SECTEUR SAP, SECTEUR INCENDIE). Pour chaque secteur, attribue les AGRES officiels français nécessaires en combinant obligatoirement l'action chiffrée ET sa mission explicite concise (ex: - Secteur SAP : VSAV 1 (Action 1-1 : Protection et bilan victime) + VSAV 2 (Action 1-2 : Évacuation) | - Secteur Incendie : FPTSR (Action 2-1 : Désincarcération et balisage) + FPT (Action 2-2 : Établissement LDV 500)). Ne réécris pas le texte de la mission, mets uniquement les numéros d'actions.",
     "m": "Dresse le bilan global quantitatif des engins REQUIS classés par secteurs, en appliquant STRICTEMENT le code couleur suivant sous forme de puces émojis :\\n🟢 Secours à personnes (VSAV, VLM, SSSM...)\\n🔴 Incendie (FPT, CCR, CCF...)\\n🔵 Alimentation en eau (CCGC, Moto-pompe...)\\n🟠 Risques Technologiques / Spécifiques / Matériels (VSR, FPTSR, VIRT, CMIC, VPRO...)\\n🟣 Commandement (VLCG, VLHR, PCC...)\\n⚫ Autres services (SMUR/Samu, Police/Gendarmerie, DIR/Routes, Mairie, Enedis...)\\nExemple de formatage : SECTEUR SAP :\\n🟢 2 VSAV\\n⚫ 1 SMUR\\nSECTEUR INCENDIE/ROUTIER :\\n🔴 1 FPT\\n🟠 1 FPTSR",
     "c": "Commandement: Point de Rassemblement des Moyens (PRM), emplacement exact du Poste de Commandement (PC / PCC), Sectorisation et attribution stricte des réseaux et canaux radio ANTARES (Canaux Tactiques Dir, Commandement, Liaison).",
     "l": "Logistique: Besoins hydrauliques précis chiffrés (débit total en l/min, engagement de poteaux d'incendie de 100mm ou CCGC), norias VSAV/SMUR, Soutien Sanitaire (SSSM), renforts spécialisés requis, et coordination des services (Enedis, GRDF, Gendarmerie).";`;
@@ -201,7 +234,7 @@ function copierSynthese() {
                      `[L — LOGISTIQUE]\n${document.getElementById('txt-l').innerText}`;
 
     navigator.clipboard.writeText(synthese).then(() => {
-        alert("Plan complet (avec classification des moyens) copié !");
+        alert("Plan complet copié !");
     }).catch(err => { alert("Erreur lors de la copie : " + err); });
 }
 </script>
