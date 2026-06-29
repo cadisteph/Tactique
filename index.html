@@ -93,7 +93,16 @@ window.onload = function() {
 function saveKey() { localStorage.setItem('pompier_key_or_direct', document.getElementById('apiKey').value.trim()); }
 
 function resetSituation() {
+    // Vide la case de situation
     document.getElementById('sitIn').value = "";
+    
+    // Réinitialise l'affichage de toutes les cartes tactiques
+    const ids = ['a', 'o', 'i', 'e', 'c', 'l'];
+    ids.forEach(id => {
+        document.getElementById(`txt-${id}`).innerHTML = "En attente...";
+    });
+    
+    // Remet le focus sur la case de texte
     document.getElementById('sitIn').focus();
 }
 
@@ -120,7 +129,6 @@ async function genererAnalyseOpenRouter() {
     const ids = ['a', 'o', 'i', 'e', 'c', 'l'];
     ids.forEach(id => document.getElementById(`txt-${id}`).innerHTML = "<span class='loading'>Doctrine en cours d'application...</span>");
 
-    // Prompt durci au maximum pour exiger la nomenclature officielle des agrès de sapeurs-pompiers (FPT, VSAV, VSR, PCC...)
     const systemPrompt = `Tu es un automate de commandement tactique pour les sapeurs-pompiers français (niveau Chef de Colonne / GOC 4). Tu analyses la situation opérationnelle et génères un objet JSON valide contenant 6 clés : "a", "o", "i", "e", "c", "l". Les valeurs sont des chaînes simples sans guillemets internes non échappés et sans saut de ligne réel (\\n). Reste extrêmement technique, concis et militaire.
 
     Instructions doctrinales impératives (GDO/GDR français) :
@@ -161,7 +169,6 @@ async function genererAnalyseOpenRouter() {
         ids.forEach(id => {
             let content = typeof json[id] === 'object' ? JSON.stringify(json[id]) : (json[id] || "Donnée indisponible.");
             
-            // Formatage intelligent à la volée pour l'affichage écran
             let formattedContent = content
                 .replace(/ \| /g, "<br>")
                 .replace(/ - /g, "<br>")
@@ -192,7 +199,6 @@ function copierSynthese() {
     const txtC = document.getElementById('txt-c').innerText;
     const txtL = document.getElementById('txt-l').innerText;
 
-    // Construction d'un bloc de texte clair et lisible pour l'envoi par message
     const synthese = `=== SYNTHÈSE TACTIQUE S.A.O.I.E.C.L. ===\n\n` +
                      `[S — SITUATION]\n${sit}\n\n` +
                      `[A — ANTICIPATION]\n${txtA}\n\n` +
