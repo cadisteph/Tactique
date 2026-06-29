@@ -5,15 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TACTIQUE S.A.O.I.E.C.L.</title>
     
+    <!-- Configuration pour l'icône sur iPhone / iOS -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Tactique GOC">
     <link rel="apple-touch-icon" href="./GOC.jpg">
     <link rel="apple-touch-icon" href="./GOC.jpeg">
     
+    <!-- Configuration standard pour navigateurs -->
     <link rel="icon" type="image/jpeg" sizes="192x192" href="./GOC.jpg">
     <link rel="icon" type="image/jpeg" sizes="192x192" href="./GOC.jpeg">
 
+    <!-- Manifest embarqué pour Motorola / Android -->
     <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIlRBQ1RJUVVFLSBTLkEuTy5JLkUuQy5MLiIsCiAgInNob3J0X25hbWUiOiAiVGFjdGlxdWUgR09DIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMwZjE3MmEiLAogICJ0aGVtZV9jb2xvciI6ICIjMGYxNzJhIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiR09DLmpwZyIsCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwKICAgICAgInR5cGUiOiAiaW1hZ2UvanBlZyIKICAgIH0sCiAgICB7CiAgICAgICJzcmMiOiAiR09DLmpwZyIsCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwKICAgICAgInR5cGUiOiAiaW1hZ2UvanBlZyIKICAgIH0KICBdCn0=">
 
     <style>
@@ -21,7 +24,7 @@
             --bg-app: #0f172a; --card-s: #1e293b;
             --card-a: #7f1d1d; --card-o: #7c2d12; --card-i: #1e3a8a; 
             --card-e: #064e3b; --card-c: #713f12; --card-l: #4c1d95;
-            --card-m: #334155; --text: #f8fafc;
+            --card-m: #334155; --card-r: #0f172a; --text: #f8fafc;
         }
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-app); color: var(--text); margin: 0; padding: 8px; padding-bottom: 60px; }
@@ -58,9 +61,16 @@
         .c-o { background-color: var(--card-o); border-left-color: #f97316; }
         .c-i { background-color: var(--card-i); border-left-color: #3b82f6; }
         .c-e { background-color: var(--card-e); border-left-color: #10b981; }
+        .c-m { background-color: var(--card-m); border-left-color: #94a3b8; }
         .c-c { background-color: var(--card-c); border-left-color: #eab308; }
         .c-l { background-color: var(--card-l); border-left-color: #a855f7; }
-        .c-m { background-color: var(--card-m); border-left-color: #94a3b8; }
+        .c-r { background-color: var(--card-r); border-left-color: #f43f5e; border: 1px dashed #475569; }
+        
+        /* Classes de couleur pour le Catalogue des Risques */
+        .risk-taken { color: #4ade80; font-weight: 600; }  /* Vert : Pris en compte */
+        .risk-danger { color: #f87171; font-weight: 600; } /* Rouge : Risque orphelin non traité */
+        .risk-none { color: #ffffff; opacity: 0.5; }        /* Blanc opaque : Absent */
+        
         .loading { font-style: italic; color: #94a3b8; font-size: 0.8rem; }
     </style>
 </head>
@@ -97,6 +107,7 @@
     <div class="card c-m"><h2>🚒 Moyens nécessaires (Bilan global)</h2><div id="txt-m">En attente...</div></div>
     <div class="card c-c"><h2>📡 C — Commandement / Antares</h2><div id="txt-c">En attente...</div></div>
     <div class="card c-l"><h2>⚓ L — Logistique / Serv. Tiers</h2><div id="txt-l">En attente...</div></div>
+    <div class="card c-r"><h2>📋 Synthèse Risques (VCAPIPEMESERT)</h2><div id="txt-risques">En attente...</div></div>
 </div>
 
 <script>
@@ -109,7 +120,7 @@ function saveKey() { localStorage.setItem('pompier_key_or_direct', document.getE
 
 function resetSituation() {
     document.getElementById('sitIn').value = "";
-    const ids = ['a', 'o', 'i', 'e', 'm', 'c', 'l'];
+    const ids = ['a', 'o', 'i', 'e', 'm', 'c', 'l', 'risques'];
     ids.forEach(id => { document.getElementById(`txt-${id}`).innerHTML = "En attente..."; });
     document.getElementById('sitIn').focus();
 }
@@ -124,8 +135,8 @@ function actionMicro() {
     if(!rec) {
         rec = new window.SpeechRecognition(); 
         rec.lang = 'fr-FR';
-        rec.continuous = true; // Mode continu pour ne pas couper pendant les blancs de réflexion
-        rec.interimResults = false; // N'écrit que les phrases complètes et validées
+        rec.continuous = true;
+        rec.interimResults = false;
         
         rec.onstart = () => { 
             isRecording = true;
@@ -146,18 +157,27 @@ function actionMicro() {
             }
             document.getElementById('sitIn').value += currentText; 
         };
-        
-        rec.onerror = (err) => {
-            console.error("Erreur micro:", err.error);
-            if(err.error === 'not-allowed') alert("Accès micro refusé. Vérifiez les autorisations de votre navigateur.");
-        };
     }
     
-    if (isRecording) {
-        rec.stop();
-    } else {
-        rec.start();
+    if (isRecording) { rec.stop(); } else { rec.start(); }
+}
+
+function formatRisqueLine(line) {
+    if (!line || !line.includes('—')) return line;
+    
+    // Si la ligne contient "Néant", le risque est absent (Blanc/Gris)
+    if (line.toLowerCase().includes('néant')) {
+        return `<span class="risk-none">${line}</span>`;
     }
+    // Si la ligne contient le marqueur [OK], le risque est pris en compte (Vert)
+    if (line.includes('[OK]')) {
+        return `<span class="risk-taken">${line.replace('[OK]', '🟢')}</span>`;
+    }
+    // Si le risque est présent mais pas marqué [OK], il est non traité (Rouge)
+    if (line.includes('[ALERT]')) {
+        return `<span class="risk-danger">${line.replace('[ALERT]', '🔴')}</span>`;
+    }
+    return line;
 }
 
 async function genererAnalyseOpenRouter() {
@@ -167,19 +187,37 @@ async function genererAnalyseOpenRouter() {
     if(!key || !key.startsWith("sk-or-")) { alert("Veuillez entrer une clé OpenRouter valide dans la zone du haut."); return; }
     if(!sit) { alert("Veuillez d'abord saisir ou dicter une situation."); return; }
 
-    const ids = ['a', 'o', 'i', 'e', 'm', 'c', 'l'];
+    const ids = ['a', 'o', 'i', 'e', 'm', 'c', 'l', 'risques'];
     ids.forEach(id => document.getElementById(`txt-${id}`).innerHTML = "<span class='loading'>Doctrine en cours d'application...</span>");
 
-    const systemPrompt = `Tu es un automate de commandement tactique pour les sapeurs-pompiers français (niveau Chef de Colonne / GOC 4). Tu analyses la situation opérationnelle et génères un objet JSON valide contenant exactement 7 clés : "a", "o", "i", "e", "m", "c", "l". Les valeurs sont des chaînes simples sans guillemets internes non échappés et sans saut de ligne réel (\\n). Reste extrêmement technique, concis et militaire.
+    const systemPrompt = `Tu es un automate de commandement tactique pour les sapeurs-pompiers français (niveau Chef de Colonne / GOC 4). Tu analyses la situation opérationnelle et génères un objet JSON valide contenant exactement 8 clés : "a", "o", "i", "e", "m", "c", "l", "risques". Les valeurs sont des chaînes simples sans guillemets internes non échappés et sans saut de ligne réel (\\n). Reste extrêmement technique, concis et militaire.
 
     Instructions doctrinales impératives (GDO/GDR français) :
     "a": "PERSONNES: (Analyse risques/intox/bilan 30min) | ANIMAUX: (Risques) | BIENS: (Effondrement, propagations, fluides) | ENVIRONNEMENT: (Pollutions, rejets toxiques, vent/météo)",
-    "o": "Hiérarchie numérique des objectifs opérationnels (ex: 1. Extraire et prendre en charge les victimes - 2. Neutraliser le risque incendie/explosion). Fixe des buts tactiques clairs.",
-    "i": "Idée de manœuvre liée directement aux objectifs de 'o' via sous-numérotation stricte. Pour l'objectif '1.', mets '1-1. [Effet recherché/Action]' et '1-2.'. Pour l'objectif '2.', '2-1.', etc. Précise le point d'effort principal.",
-    "e": "Ordre d'exécution sectorisé précis. Divise la manœuvre par Secteurs (ex: SECTEUR SAP, SECTEUR INCENDIE). Pour chaque secteur, attribue les AGRES officiels français nécessaires en combinant obligatoirement l'action chiffrée ET sa mission explicite concise (ex: - Secteur SAP : VSAV 1 (Action 1-1 : Protection et bilan victime) + VSAV 2 (Action 1-2 : Évacuation) | - Secteur Incendie : FPTSR (Action 2-1 : Désincarcération et balisage) + FPT (Action 2-2 : Établissement LDV 500)). Ne réécris pas le texte de la mission, mets uniquement les numéros d'actions.",
-    "m": "Dresse le bilan global quantitatif des engins REQUIS classés par secteurs, en appliquant STRICTEMENT le code couleur suivant sous forme de puces émojis :\\n🟢 Secours à personnes (VSAV, VLM, SSSM...)\\n🔴 Incendie (FPT, CCR, CCF...)\\n🔵 Alimentation en eau (CCGC, Moto-pompe...)\\n🟠 Risques Technologiques / Spécifiques / Matériels (VSR, FPTSR, VIRT, CMIC, VPRO...)\\n🟣 Commandement (VLCG, VLHR, PCC...)\\n⚫ Autres services (SMUR/Samu, Police/Gendarmerie, DIR/Routes, Mairie, Enedis...)\\nExemple de formatage : SECTEUR SAP :\\n🟢 2 VSAV\\n⚫ 1 SMUR\\nSECTEUR INCENDIE/ROUTIER :\\n🔴 1 FPT\\n🟠 1 FPTSR",
-    "c": "Commandement: Point de Rassemblement des Moyens (PRM), emplacement exact du Poste de Commandement (PC / PCC), Sectorisation et attribution stricte des réseaux et canaux radio ANTARES (Canaux Tactiques Dir, Commandement, Liaison).",
-    "l": "Logistique: Besoins hydrauliques précis chiffrés (débit total en l/min, engagement de poteaux d'incendie de 100mm ou CCGC), norias VSAV/SMUR, Soutien Sanitaire (SSSM), renforts spécialisés requis, et coordination des services (Enedis, GRDF, Gendarmerie).";`;
+    "o": "Hiérarchie numérique des objectifs opérationnels (Limité à un maximum absolu de 4 objectifs prioritaires, ex: 1. Gérer les victimes - 2. Neutraliser l'incendie). Fixe des buts tactiques clairs.",
+    "i": "Idée de manœuvre liée directement aux objectifs de 'o' via sous-numérotation stricte (ex: 1-1, 1-2, 2-1). Précise le point d'effort.",
+    "e": "Ordre d'exécution sectorisé précis. Divise la manœuvre par Secteurs (ex: SECTEUR SAP, SECTEUR INCENDIE). Pour chaque secteur, attribue les AGRES nécessaires en combinant l'action chiffrée ET sa mission explicite concise entre parenthèses (ex: VSAV 1 (Action 1-1 : Bilan victime)).",
+    "m": "Dresse le bilan global quantitatif des engins REQUIS classés par secteurs, en appliquant STRICTEMENT le code couleur suivant sous forme de puces émojis : 🟢 SAP | 🔴 Incendie | 🔵 Eau | 🟠 RT/Ménagements | 🟣 CDMT | ⚫ Tiers (SMUR, Gendarmerie...).",
+    "c": "Commandement: PRM, emplacement du PC / PCC, attribution stricte des canaux radio ANTARES tactiques/commandement/liaison.",
+    "l": "Logistique: Besoins hydrauliques précis chiffrés, norias, Soutien Sanitaire (SSSM), renforts spécialisés.",
+    "risques": "Effectue une revue exhaustive finale selon la grille VCAPIPEMESERT. Pour chaque lettre, détermine si le risque est présent dans l'analyse et applique STRICTEMENT cette nomenclature de balisage :
+    - Si le risque est présent ET qu'il a été pris en compte dans les objectifs (o) ou l'exécution (e), ajoute impérativement la balise '[OK]' en fin de ligne (ex: V — Victime : 2 blessés légers [OK]).
+    - Si le risque est présent/avéré dans la situation mais qu'aucun objectif ou agrès n'a encore été affecté pour le contrer, ajoute la balise '[ALERT]' en fin de ligne (ex: P — Pollution : Risque ruissellement hydrocarbures [ALERT]).
+    - Si le risque n'existe pas du tout sur cette intervention, écris strictement 'Néant' après les deux points (ex: R — Radiologique : Néant).
+    Respecte l'ordre exact :
+    V — Victime : ...
+    C — Chimique : ...
+    A — Asphyxie : ...
+    P — Panique : ...
+    I — Incendie : ...
+    P — Pollution : ...
+    E — Effondrement : ...
+    M — Météo : ...
+    E — Énergie : ...
+    S — Sur-accident : ...
+    E — Explosion : ...
+    R — Radiologique : ...
+    T — Toxique : ...";`;
 
     try {
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -193,7 +231,7 @@ async function genererAnalyseOpenRouter() {
                 ],
                 response_format: { type: "json_object" },
                 temperature: 0.1,
-                max_tokens: 2200
+                max_tokens: 2500
             })
         });
 
@@ -209,6 +247,14 @@ async function genererAnalyseOpenRouter() {
             let content = typeof json[id] === 'object' ? JSON.stringify(json[id]) : (json[id] || "Donnée indisponible.");
             let formattedContent = content.replace(/ \| /g, "<br>").replace(/ - /g, "<br>").replace(/(\d+\.\s|\d+-\d+\.\s)/g, "<br>$1");
             if (formattedContent.startsWith("<br>")) { formattedContent = formattedContent.substring(4); }
+            
+            // Traitement spécial pour colorer dynamiquement le catalogue VCAPIPEMESERT
+            if (id === 'risques') {
+                let lines = formattedContent.split('\n');
+                if(lines.length <= 1) { lines = formattedContent.split('<br>'); }
+                formattedContent = lines.map(line => formatRisqueLine(line)).join('<br>');
+            }
+            
             document.getElementById(`txt-${id}`).innerHTML = formattedContent;
         });
 
@@ -231,7 +277,8 @@ function copierSynthese() {
                      `[E — EXÉCUTION]\n${document.getElementById('txt-e').innerText}\n\n` +
                      `[BILAN DES MOYENS CLASSÉS]\n${document.getElementById('txt-m').innerText}\n\n` +
                      `[C — COMMANDEMENT]\n${document.getElementById('txt-c').innerText}\n\n` +
-                     `[L — LOGISTIQUE]\n${document.getElementById('txt-l').innerText}`;
+                     `[L — LOGISTIQUE]\n${document.getElementById('txt-l').innerText}\n\n` +
+                     `[SYNTHÈSE EXHAUSTIVE DES RISQUES — VCAPIPEMESERT]\n${document.getElementById('txt-risques').innerText}`;
 
     navigator.clipboard.writeText(synthese).then(() => {
         alert("Plan complet copié !");
