@@ -14,6 +14,8 @@
     <link rel="icon" type="image/jpeg" sizes="192x192" href="./GOC.jpg">
     <link rel="icon" type="image/jpeg" sizes="192x192" href="./GOC.jpeg">
 
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIlRBQ1RJUVVFLSBTLkEuTy5JLkUuQy5MLiIsCiAgInNob3J0X25hbWUiOiAiVGFjdGlxdWUgR09DIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMwZjE3MmEiLAogICJ0aGVtZV9jb2xvciI6ICIjMGYxNzJhIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiR09DLmpwZyIsCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwKICAgICAgInR5cGUiOiAiaW1hZ2UvanBlZyIKICAgIH0sCiAgICB7CiAgICAgICJzcmMiOiAiR09DLmpwZyIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2UvanBlZyIKICAgIH0KICBdCn0=">
+
     <style>
         :root {
             --bg-app: #0f172a; --card-s: #1e293b;
@@ -103,16 +105,9 @@ window.onload = function() {
 function saveKey() { localStorage.setItem('pompier_key_or_direct', document.getElementById('apiKey').value.trim()); }
 
 function resetSituation() {
-    // Vide la case de situation
     document.getElementById('sitIn').value = "";
-    
-    // Réinitialise l'affichage de toutes les cartes tactiques
     const ids = ['a', 'o', 'i', 'e', 'c', 'l'];
-    ids.forEach(id => {
-        document.getElementById(`txt-${id}`).innerHTML = "En attente...";
-    });
-    
-    // Remet le focus sur la case de texte
+    ids.forEach(id => { document.getElementById(`txt-${id}`).innerHTML = "En attente..."; });
     document.getElementById('sitIn').focus();
 }
 
@@ -152,10 +147,7 @@ async function genererAnalyseOpenRouter() {
     try {
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
-            headers: { 
-                "Authorization": `Bearer ${key}`,
-                "Content-Type": "application/json"
-            },
+            headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
             body: JSON.stringify({
                 model: "google/gemini-2.5-flash",
                 messages: [
@@ -178,16 +170,8 @@ async function genererAnalyseOpenRouter() {
 
         ids.forEach(id => {
             let content = typeof json[id] === 'object' ? JSON.stringify(json[id]) : (json[id] || "Donnée indisponible.");
-            
-            let formattedContent = content
-                .replace(/ \| /g, "<br>")
-                .replace(/ - /g, "<br>")
-                .replace(/(\d+\.\s|\d+-\d+\.\s)/g, "<br>$1");
-                
-            if (formattedContent.startsWith("<br>")) {
-                formattedContent = formattedContent.substring(4);
-            }
-
+            let formattedContent = content.replace(/ \| /g, "<br>").replace(/ - /g, "<br>").replace(/(\d+\.\s|\d+-\d+\.\s)/g, "<br>$1");
+            if (formattedContent.startsWith("<br>")) { formattedContent = formattedContent.substring(4); }
             document.getElementById(`txt-${id}`).innerHTML = formattedContent;
         });
 
@@ -202,27 +186,18 @@ function copierSynthese() {
     const sit = document.getElementById('sitIn').value.trim();
     if (!sit) { alert("Rien à copier."); return; }
 
-    const txtA = document.getElementById('txt-a').innerText;
-    const txtO = document.getElementById('txt-o').innerText;
-    const txtI = document.getElementById('txt-i').innerText;
-    const txtE = document.getElementById('txt-e').innerText;
-    const txtC = document.getElementById('txt-c').innerText;
-    const txtL = document.getElementById('txt-l').innerText;
-
     const synthese = `=== SYNTHÈSE TACTIQUE S.A.O.I.E.C.L. ===\n\n` +
                      `[S — SITUATION]\n${sit}\n\n` +
-                     `[A — ANTICIPATION]\n${txtA}\n\n` +
-                     `[O — OBJECTIFS]\n${txtO}\n\n` +
-                     `[I — IDÉE DE MANŒUVRE]\n${txtI}\n\n` +
-                     `[E — EXÉCUTION]\n${txtE}\n\n` +
-                     `[C — COMMANDEMENT]\n${txtC}\n\n` +
-                     `[L — LOGISTIQUE]\n${txtL}`;
+                     `[A — ANTICIPATION]\n${document.getElementById('txt-a').innerText}\n\n` +
+                     `[O — OBJECTIFS]\n${document.getElementById('txt-o').innerText}\n\n` +
+                     `[I — IDÉE DE MANŒUVRE]\n${document.getElementById('txt-i').innerText}\n\n` +
+                     `[E — EXÉCUTION]\n${document.getElementById('txt-e').innerText}\n\n` +
+                     `[C — COMMANDEMENT]\n${document.getElementById('txt-c').innerText}\n\n` +
+                     `[L — LOGISTIQUE]\n${document.getElementById('txt-l').innerText}`;
 
     navigator.clipboard.writeText(synthese).then(() => {
-        alert("Plan S.A.O.I.E.C.L. copié dans le presse-papiers ! Vous pouvez maintenant le coller dans vos Messages, Mails ou WhatsApp.");
-    }).catch(err => {
-        alert("Erreur lors de la copie : " + err);
-    });
+        alert("Plan copié ! Collez-le dans vos messages.");
+    }).catch(err => { alert("Erreur lors de la copie : " + err); });
 }
 </script>
 </body>
