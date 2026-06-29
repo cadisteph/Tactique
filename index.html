@@ -20,7 +20,8 @@
         :root {
             --bg-app: #0f172a; --card-s: #1e293b;
             --card-a: #7f1d1d; --card-o: #7c2d12; --card-i: #1e3a8a; 
-            --card-e: #064e3b; --card-c: #713f12; --card-l: #4c1d95; --text: #f8fafc;
+            --card-e: #064e3b; --card-c: #713f12; --card-l: #4c1d95;
+            --card-m: #334155; --text: #f8fafc;
         }
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-app); color: var(--text); margin: 0; padding: 8px; padding-bottom: 60px; }
@@ -59,6 +60,7 @@
         .c-e { background-color: var(--card-e); border-left-color: #10b981; }
         .c-c { background-color: var(--card-c); border-left-color: #eab308; }
         .c-l { background-color: var(--card-l); border-left-color: #a855f7; }
+        .c-m { background-color: var(--card-m); border-left-color: #94a3b8; }
         .loading { font-style: italic; color: #94a3b8; font-size: 0.8rem; }
     </style>
 </head>
@@ -91,7 +93,8 @@
     <div class="card c-a"><h2>⚠️ A — Anticipation (P.A.B.E.)</h2><div id="txt-a">En attente...</div></div>
     <div class="card c-o"><h2>🎯 O — Objectifs (Quoi faire ?)</h2><div id="txt-o">En attente...</div></div>
     <div class="card c-i"><h2>⚡ I — Idée de Manœuvre</h2><div id="txt-i">En attente...</div></div>
-    <div class="card c-e"><h2>⚔️ E — Exécution (Agrès/Secteurs)</h2><div id="txt-e">En attente...</div></div>
+    <div class="card c-e"><h2>⚔️ E — Exécution (Secteurs tactiques)</h2><div id="txt-e">En attente...</div></div>
+    <div class="card c-m"><h2>🚒 Moyens nécessaires (Bilan global)</h2><div id="txt-m">En attente...</div></div>
     <div class="card c-c"><h2>📡 C — Commandement / Antares</h2><div id="txt-c">En attente...</div></div>
     <div class="card c-l"><h2>⚓ L — Logistique / Serv. Tiers</h2><div id="txt-l">En attente...</div></div>
 </div>
@@ -106,7 +109,7 @@ function saveKey() { localStorage.setItem('pompier_key_or_direct', document.getE
 
 function resetSituation() {
     document.getElementById('sitIn').value = "";
-    const ids = ['a', 'o', 'i', 'e', 'c', 'l'];
+    const ids = ['a', 'o', 'i', 'e', 'm', 'c', 'l'];
     ids.forEach(id => { document.getElementById(`txt-${id}`).innerHTML = "En attente..."; });
     document.getElementById('sitIn').focus();
 }
@@ -131,16 +134,17 @@ async function genererAnalyseOpenRouter() {
     if(!key || !key.startsWith("sk-or-")) { alert("Veuillez entrer une clé OpenRouter valide dans la zone du haut."); return; }
     if(!sit) { alert("Veuillez d'abord saisir ou dicter une situation."); return; }
 
-    const ids = ['a', 'o', 'i', 'e', 'c', 'l'];
+    const ids = ['a', 'o', 'i', 'e', 'm', 'c', 'l'];
     ids.forEach(id => document.getElementById(`txt-${id}`).innerHTML = "<span class='loading'>Doctrine en cours d'application...</span>");
 
-    const systemPrompt = `Tu es un automate de commandement tactique pour les sapeurs-pompiers français (niveau Chef de Colonne / GOC 4). Tu analyses la situation opérationnelle et génères un objet JSON valide contenant 6 clés : "a", "o", "i", "e", "c", "l". Les valeurs sont des chaînes simples sans guillemets internes non échappés et sans saut de ligne réel (\\n). Reste extrêmement technique, concis et militaire.
+    const systemPrompt = `Tu es un automate de commandement tactique pour les sapeurs-pompiers français (niveau Chef de Colonne / GOC 4). Tu analyses la situation opérationnelle et génères un objet JSON valide contenant exactement 7 clés : "a", "o", "i", "e", "m", "c", "l". Les valeurs sont des chaînes simples sans guillemets internes non échappés et sans saut de ligne réel (\\n). Reste extrêmement technique, concis et militaire.
 
     Instructions doctrinales impératives (GDO/GDR français) :
     "a": "PERSONNES: (Analyse risques/intox/bilan 30min) | ANIMAUX: (Risques) | BIENS: (Effondrement, propagations, fluides) | ENVIRONNEMENT: (Pollutions, rejets toxiques, vent/météo)",
     "o": "Hiérarchie numérique des objectifs opérationnels (ex: 1. Extraire et prendre en charge les victimes - 2. Neutraliser le risque incendie/explosion - 3. Préservation de l'environnement). Fixe des buts tactiques clairs.",
     "i": "Idée de manœuvre liée directement aux objectifs de 'o' via sous-numérotation stricte. Pour l'objectif '1.', mets '1-1. [Effet recherché/Action]' et '1-2.'. Pour l'objectif '2.', '2-1.', etc. Précise le point d'effort principal.",
-    "e": "Ordre d'exécution sectorisé précis. Utilise STRICTEMENT la nomenclature officielle des agrès français (FPT, FPTSR, VSR, EPA, BEA, VSAV, VLM, VLCG, VLHR, PCC, VPRO, CD, CE, VIRT, CMIC). Répartis les agrès par secteurs géographiques ou fonctionnels clairs.",
+    "e": "Ordre d'exécution sectorisé précis (Qui fait quoi géographiquement). Utilise la nomenclature officielle des agrès français (FPT, FPTSR, VSR, EPA, BEA, VSAV, VLM, VLCG, VLHR, PCC, VPRO, CD, CE, VIRT, CMIC).",
+    "m": "Dresse uniquement le bilan quantitatif brut de TOUS les engins et moyens de secours requis pour cette opération (ex: - 2 VSAV | - 1 FPTSR | - 1 FPT | - 1 SMUR | - 1 PCC | - 1 VLCG | - 1 Cellule Émulseur, etc.). Sois exhaustif sur les besoins théoriques liés à la cinématique.",
     "c": "Commandement: Point de Rassemblement des Moyens (PRM), emplacement exact du Poste de Commandement (PC / PCC), Sectorisation (Secteur SAP, Secteur Incendie/Routier, Secteur Environnement) et attribution stricte des réseaux et canaux radio ANTARES (Canaux Tactiques Dir, Commandement, Liaison).",
     "l": "Logistique: Besoins hydrauliques précis chiffrés (débit total en l/min, engagement de poteaux d'incendie de 100mm ou camions citernes grande capacité CCGC), norias VSAV/SMUR, Soutien Sanitaire (SSSM), renforts spécialisés requis, et coordination des services (Enedis, GRDF, DIR/DDT, Gendarmerie/Police).";`;
 
@@ -156,7 +160,7 @@ async function genererAnalyseOpenRouter() {
                 ],
                 response_format: { type: "json_object" },
                 temperature: 0.1,
-                max_tokens: 2000
+                max_tokens: 2200
             })
         });
 
@@ -192,11 +196,12 @@ function copierSynthese() {
                      `[O — OBJECTIFS]\n${document.getElementById('txt-o').innerText}\n\n` +
                      `[I — IDÉE DE MANŒUVRE]\n${document.getElementById('txt-i').innerText}\n\n` +
                      `[E — EXÉCUTION]\n${document.getElementById('txt-e').innerText}\n\n` +
+                     `[MOYENS DEMANDÉS]\n${document.getElementById('txt-m').innerText}\n\n` +
                      `[C — COMMANDEMENT]\n${document.getElementById('txt-c').innerText}\n\n` +
                      `[L — LOGISTIQUE]\n${document.getElementById('txt-l').innerText}`;
 
     navigator.clipboard.writeText(synthese).then(() => {
-        alert("Plan copié ! Collez-le dans vos messages.");
+        alert("Plan complet (avec bilan des moyens) copié dans le presse-papiers !");
     }).catch(err => { alert("Erreur lors de la copie : " + err); });
 }
 </script>
