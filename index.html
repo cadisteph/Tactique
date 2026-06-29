@@ -5,18 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TACTIQUE S.A.O.I.E.C.L.</title>
     
-    <!-- Configuration pour l'icône sur iPhone / iOS -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Tactique GOC">
     <link rel="apple-touch-icon" href="./GOC.jpg">
     <link rel="apple-touch-icon" href="./GOC.jpeg">
     
-    <!-- Configuration standard pour navigateurs -->
     <link rel="icon" type="image/jpeg" sizes="192x192" href="./GOC.jpg">
     <link rel="icon" type="image/jpeg" sizes="192x192" href="./GOC.jpeg">
 
-    <!-- Manifest embarqué pour Motorola / Android -->
     <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIlRBQ1RJUVVFLSBTLkEuTy5JLkUuQy5MLiIsCiAgInNob3J0X25hbWUiOiAiVGFjdGlxdWUgR09DIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMwZjE3MmEiLAogICJ0aGVtZV9jb2xvciI6ICIjMGYxNzJhIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiR09DLmpwZyIsCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwKICAgICAgInR5cGUiOiAiaW1hZ2UvanBlZyIKICAgIH0sCiAgICB7CiAgICAgICJzcmMiOiAiR09DLmpwZyIsCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwKICAgICAgInR5cGUiOiAiaW1hZ2UvanBlZyIKICAgIH0KICBdCn0=">
 
     <style>
@@ -24,7 +21,7 @@
             --bg-app: #0f172a; --card-s: #1e293b;
             --card-a: #7f1d1d; --card-o: #7c2d12; --card-i: #1e3a8a; 
             --card-e: #064e3b; --card-c: #713f12; --card-l: #4c1d95;
-            --card-m: #334155; --card-r: #0f172a; --text: #f8fafc;
+            --card-m: #334155; --card-r: #111827; --text: #f8fafc;
         }
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-app); color: var(--text); margin: 0; padding: 8px; padding-bottom: 60px; }
@@ -66,10 +63,11 @@
         .c-l { background-color: var(--card-l); border-left-color: #a855f7; }
         .c-r { background-color: var(--card-r); border-left-color: #f43f5e; border: 1px dashed #475569; }
         
-        /* Classes de couleur pour le Catalogue des Risques */
-        .risk-taken { color: #4ade80; font-weight: 600; }  /* Vert : Pris en compte */
-        .risk-danger { color: #f87171; font-weight: 600; } /* Rouge : Risque orphelin non traité */
-        .risk-none { color: #ffffff; opacity: 0.5; }        /* Blanc opaque : Absent */
+        /* Classes de visibilité pour la Synthèse des Risques */
+        .risk-line { display: block; margin-bottom: 2px; }
+        .risk-taken { color: #4ade80; font-weight: 600; }  /* Vert : Risque couvert */
+        .risk-danger { color: #f87171; font-weight: 600; } /* Rouge : Alerte orpheline */
+        .risk-none { color: #94a3b8; opacity: 0.6; }        /* Gris/Blanc opaque : Néant */
         
         .loading { font-style: italic; color: #94a3b8; font-size: 0.8rem; }
     </style>
@@ -162,22 +160,37 @@ function actionMicro() {
     if (isRecording) { rec.stop(); } else { rec.start(); }
 }
 
-function formatRisqueLine(line) {
-    if (!line || !line.includes('—')) return line;
-    
-    // Si la ligne contient "Néant", le risque est absent (Blanc/Gris)
-    if (line.toLowerCase().includes('néant')) {
-        return `<span class="risk-none">${line}</span>`;
-    }
-    // Si la ligne contient le marqueur [OK], le risque est pris en compte (Vert)
-    if (line.includes('[OK]')) {
-        return `<span class="risk-taken">${line.replace('[OK]', '🟢')}</span>`;
-    }
-    // Si le risque est présent mais pas marqué [OK], il est non traité (Rouge)
-    if (line.includes('[ALERT]')) {
-        return `<span class="risk-danger">${line.replace('[ALERT]', '🔴')}</span>`;
-    }
-    return line;
+function parseAndColorizeRisks(rawText) {
+    // Nettoie et fragmente le bloc de texte brut renvoyé par l'IA en lignes exploitables
+    let cleanText = rawText.replace(/ \| /g, "\n");
+    let lines = cleanText.split(/\n|<br>/);
+    let outputHTML = "";
+
+    lines.forEach(line => {
+        let trimmed = line.trim();
+        if (!trimmed) return;
+
+        // Cas 1 : Le risque n'existe pas (Néant) -> Couleur Blanche estompée
+        if (trimmed.toLowerCase().includes('néant')) {
+            outputHTML += `<span class="risk-line risk-none">${trimmed}</span>`;
+        } 
+        // Cas 2 : Le risque est maîtrisé -> Devient Vert
+        else if (trimmed.includes('[OK]')) {
+            let processed = trimmed.replace('[OK]', '').trim();
+            outputHTML += `<span class="risk-line risk-taken">🟢 ${processed}</span>`;
+        } 
+        // Cas 3 : Le risque est non couvert -> Devient Rouge Alerte
+        else if (trimmed.includes('[ALERT]')) {
+            let processed = trimmed.replace('[ALERT]', '').trim();
+            outputHTML += `<span class="risk-line risk-danger">🔴 ${processed}</span>`;
+        } 
+        // Cas générique de repli
+        else {
+            outputHTML += `<span class="risk-line">${trimmed}</span>`;
+        }
+    });
+
+    return outputHTML;
 }
 
 async function genererAnalyseOpenRouter() {
@@ -200,24 +213,11 @@ async function genererAnalyseOpenRouter() {
     "m": "Dresse le bilan global quantitatif des engins REQUIS classés par secteurs, en appliquant STRICTEMENT le code couleur suivant sous forme de puces émojis : 🟢 SAP | 🔴 Incendie | 🔵 Eau | 🟠 RT/Ménagements | 🟣 CDMT | ⚫ Tiers (SMUR, Gendarmerie...).",
     "c": "Commandement: PRM, emplacement du PC / PCC, attribution stricte des canaux radio ANTARES tactiques/commandement/liaison.",
     "l": "Logistique: Besoins hydrauliques précis chiffrés, norias, Soutien Sanitaire (SSSM), renforts spécialisés.",
-    "risques": "Effectue une revue exhaustive finale selon la grille VCAPIPEMESERT. Pour chaque lettre, détermine si le risque est présent dans l'analyse et applique STRICTEMENT cette nomenclature de balisage :
-    - Si le risque est présent ET qu'il a été pris en compte dans les objectifs (o) ou l'exécution (e), ajoute impérativement la balise '[OK]' en fin de ligne (ex: V — Victime : 2 blessés légers [OK]).
-    - Si le risque est présent/avéré dans la situation mais qu'aucun objectif ou agrès n'a encore été affecté pour le contrer, ajoute la balise '[ALERT]' en fin de ligne (ex: P — Pollution : Risque ruissellement hydrocarbures [ALERT]).
+    "risques": "Effectue une revue exhaustive finale selon la grille VCAPIPEMESERT. Pour chaque lettre, détermine si le risque est présent dans ton analyse globale. Écris impérativement chaque risque sur une nouvelle ligne (ou séparé par un symbole '|') en respectant STRICTEMENT cette nomenclature de balisage :
+    - Si le risque est avéré/présent ET qu'il a été traité/pris en compte dans les objectifs (o) ou l'exécution (e), ajoute la balise '[OK]' en fin de ligne (ex: V — Victime : 2 blessés légers [OK]).
+    - Si le risque est présent/avéré dans la situation mais qu'aucun objectif ou agrès n'a été affecté pour le neutraliser, ajoute la balise '[ALERT]' en fin de ligne (ex: P — Pollution : Ruissellement des eaux d'extinction [ALERT]).
     - Si le risque n'existe pas du tout sur cette intervention, écris strictement 'Néant' après les deux points (ex: R — Radiologique : Néant).
-    Respecte l'ordre exact :
-    V — Victime : ...
-    C — Chimique : ...
-    A — Asphyxie : ...
-    P — Panique : ...
-    I — Incendie : ...
-    P — Pollution : ...
-    E — Effondrement : ...
-    M — Météo : ...
-    E — Énergie : ...
-    S — Sur-accident : ...
-    E — Explosion : ...
-    R — Radiologique : ...
-    T — Toxique : ...";`;
+    Génère impérativement les 13 lignes dans l'ordre exact : V, C, A, P, I, P, E, M, E, S, E, R, T.";`;
 
     try {
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -245,17 +245,15 @@ async function genererAnalyseOpenRouter() {
 
         ids.forEach(id => {
             let content = typeof json[id] === 'object' ? JSON.stringify(json[id]) : (json[id] || "Donnée indisponible.");
-            let formattedContent = content.replace(/ \| /g, "<br>").replace(/ - /g, "<br>").replace(/(\d+\.\s|\d+-\d+\.\s)/g, "<br>$1");
-            if (formattedContent.startsWith("<br>")) { formattedContent = formattedContent.substring(4); }
             
-            // Traitement spécial pour colorer dynamiquement le catalogue VCAPIPEMESERT
             if (id === 'risques') {
-                let lines = formattedContent.split('\n');
-                if(lines.length <= 1) { lines = formattedContent.split('<br>'); }
-                formattedContent = lines.map(line => formatRisqueLine(line)).join('<br>');
+                // Injection et coloration dynamique de l'espace VCAPIPEMESERT
+                document.getElementById('txt-risques').innerHTML = parseAndColorizeRisks(content);
+            } else {
+                let formattedContent = content.replace(/ \| /g, "<br>").replace(/ - /g, "<br>").replace(/(\d+\.\s|\d+-\d+\.\s)/g, "<br>$1");
+                if (formattedContent.startsWith("<br>")) { formattedContent = formattedContent.substring(4); }
+                document.getElementById(`txt-${id}`).innerHTML = formattedContent;
             }
-            
-            document.getElementById(`txt-${id}`).innerHTML = formattedContent;
         });
 
     } catch (e) {
